@@ -178,26 +178,130 @@ function drawGrid() {
 }
 
 function drawSnake() {
-  const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-  gradient.addColorStop(0, '#4ade80');
-  gradient.addColorStop(1, '#22d3ee');
-  ctx.fillStyle = gradient;
-
   snake.forEach((segment, index) => {
     const x = segment.x * CELL_SIZE;
     const y = segment.y * CELL_SIZE;
-    ctx.fillRect(x, y, CELL_SIZE, CELL_SIZE);
+    const isHead = index === 0;
+    const progress = index / Math.max(1, snake.length - 1);
+    const padding = CELL_SIZE * 0.15;
+    const radius = CELL_SIZE / 2.3;
+    const bodySize = CELL_SIZE - padding * 2;
 
-    if (index === 0) {
-      ctx.fillStyle = 'rgba(15, 23, 42, 0.6)';
-      const eyeSize = CELL_SIZE / 6;
-      const offsetX = direction.x === 0 ? eyeSize : direction.x > 0 ? CELL_SIZE - 2 * eyeSize : eyeSize;
-      const offsetY = direction.y === 0 ? eyeSize : direction.y > 0 ? CELL_SIZE - 2 * eyeSize : eyeSize;
-      ctx.fillRect(x + offsetX, y + eyeSize, eyeSize, eyeSize);
-      ctx.fillRect(x + eyeSize, y + offsetY, eyeSize, eyeSize);
-      ctx.fillStyle = gradient;
+    const bodyGradient = ctx.createLinearGradient(x, y, x + CELL_SIZE, y + CELL_SIZE);
+    bodyGradient.addColorStop(0, `hsl(${145 - progress * 18}, 82%, ${55 - progress * 10}%)`);
+    bodyGradient.addColorStop(1, `hsl(${165 - progress * 10}, 88%, ${42 - progress * 8}%)`);
+
+    ctx.save();
+    ctx.shadowColor = 'rgba(34, 197, 94, 0.35)';
+    ctx.shadowBlur = 12;
+    drawRoundedRect(ctx, x + padding, y + padding, bodySize, bodySize, radius);
+    ctx.fillStyle = bodyGradient;
+    ctx.fill();
+    ctx.restore();
+
+    ctx.save();
+    ctx.lineWidth = 1.4;
+    ctx.strokeStyle = 'rgba(15, 23, 42, 0.45)';
+    drawRoundedRect(ctx, x + padding, y + padding, bodySize, bodySize, radius);
+    ctx.stroke();
+    ctx.restore();
+
+    ctx.save();
+    const shineGradient = ctx.createLinearGradient(x, y, x, y + CELL_SIZE);
+    shineGradient.addColorStop(0, 'rgba(255, 255, 255, 0.6)');
+    shineGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+    ctx.globalAlpha = 0.4;
+    drawRoundedRect(
+      ctx,
+      x + padding + 1.5,
+      y + padding + 1.5,
+      bodySize - 3,
+      (bodySize - 3) / 1.7,
+      radius / 1.5
+    );
+    ctx.fillStyle = shineGradient;
+    ctx.fill();
+    ctx.restore();
+
+    if (isHead) {
+      drawSnakeHead(x, y, padding, bodySize);
     }
   });
+}
+
+function drawSnakeHead(x, y, padding, bodySize) {
+  const centerX = x + CELL_SIZE / 2;
+  const centerY = y + CELL_SIZE / 2;
+  const eyeRadius = Math.max(2.5, CELL_SIZE / 6.5);
+  const pupilRadius = eyeRadius / 1.8;
+  const eyeOffset = eyeRadius * 1.2;
+
+  let eyes;
+  if (direction.x !== 0) {
+    const baseX = direction.x > 0 ? x + CELL_SIZE - padding - eyeRadius * 1.2 : x + padding + eyeRadius * 1.2;
+    eyes = [
+      { x: baseX, y: centerY - eyeOffset },
+      { x: baseX, y: centerY + eyeOffset },
+    ];
+  } else {
+    const baseY = direction.y > 0 ? y + CELL_SIZE - padding - eyeRadius * 1.2 : y + padding + eyeRadius * 1.2;
+    eyes = [
+      { x: centerX - eyeOffset, y: baseY },
+      { x: centerX + eyeOffset, y: baseY },
+    ];
+  }
+
+  ctx.save();
+  eyes.forEach((eye) => {
+    ctx.fillStyle = '#f8fafc';
+    ctx.beginPath();
+    ctx.arc(eye.x, eye.y, eyeRadius, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#0f172a';
+    ctx.beginPath();
+    ctx.arc(
+      eye.x + direction.x * eyeRadius * 0.25,
+      eye.y + direction.y * eyeRadius * 0.25,
+      pupilRadius,
+      0,
+      Math.PI * 2
+    );
+    ctx.fill();
+  });
+  ctx.restore();
+
+  const tongueLength = CELL_SIZE / 3.2;
+  const tongueWidth = CELL_SIZE / 10;
+  const baseX = centerX + direction.x * (bodySize / 2 + 1);
+  const baseY = centerY + direction.y * (bodySize / 2 + 1);
+
+  ctx.save();
+  ctx.fillStyle = 'rgba(248, 113, 113, 0.85)';
+  ctx.beginPath();
+  if (direction.x !== 0) {
+    ctx.moveTo(baseX, baseY - tongueWidth / 2);
+    ctx.lineTo(baseX + direction.x * tongueLength, baseY);
+    ctx.lineTo(baseX, baseY + tongueWidth / 2);
+  } else {
+    ctx.moveTo(baseX - tongueWidth / 2, baseY);
+    ctx.lineTo(baseX, baseY + direction.y * tongueLength);
+    ctx.lineTo(baseX + tongueWidth / 2, baseY);
+  }
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawRoundedRect(context, x, y, width, height, radius) {
+  const r = Math.min(radius, width / 2, height / 2);
+  context.beginPath();
+  context.moveTo(x + r, y);
+  context.arcTo(x + width, y, x + width, y + height, r);
+  context.arcTo(x + width, y + height, x, y + height, r);
+  context.arcTo(x, y + height, x, y, r);
+  context.arcTo(x, y, x + width, y, r);
+  context.closePath();
 }
 
 function drawFood() {
