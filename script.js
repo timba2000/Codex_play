@@ -20,6 +20,47 @@ let isRunning = false;
 let isGameOver = false;
 let hasStarted = false;
 
+let audioContext = null;
+
+function getAudioContext() {
+  if (audioContext) return audioContext;
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextClass) return null;
+  audioContext = new AudioContextClass();
+  return audioContext;
+}
+
+function unlockAudioContext() {
+  const context = getAudioContext();
+  if (!context) return;
+  if (context.state === 'suspended') {
+    context.resume();
+  }
+}
+
+function playMunchSound() {
+  const context = getAudioContext();
+  if (!context) return;
+
+  const now = context.currentTime;
+  const oscillator = context.createOscillator();
+  const gainNode = context.createGain();
+
+  oscillator.type = 'square';
+  oscillator.frequency.setValueAtTime(280, now);
+  oscillator.frequency.exponentialRampToValueAtTime(480, now + 0.18);
+
+  gainNode.gain.setValueAtTime(0.0001, now);
+  gainNode.gain.exponentialRampToValueAtTime(0.2, now + 0.02);
+  gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 0.25);
+
+  oscillator.connect(gainNode);
+  gainNode.connect(context.destination);
+
+  oscillator.start(now);
+  oscillator.stop(now + 0.3);
+}
+
 const keyMap = {
   ArrowUp: { x: 0, y: -1 },
   ArrowDown: { x: 0, y: 1 },
@@ -58,6 +99,7 @@ function startGame() {
   if (isGameOver) {
     resetGame();
   }
+  unlockAudioContext();
   isRunning = true;
   hasStarted = true;
   intervalId = window.setInterval(step, BASE_SPEED);
@@ -73,6 +115,7 @@ function pauseGame() {
 
 function resumeGame() {
   if (isRunning || isGameOver) return;
+  unlockAudioContext();
   isRunning = true;
   hasStarted = true;
   intervalId = window.setInterval(step, BASE_SPEED);
@@ -127,6 +170,7 @@ function step() {
     score += 10;
     scoreValue.textContent = score;
     food = spawnFood();
+    playMunchSound();
   } else {
     snake.pop();
   }
@@ -349,6 +393,7 @@ function changeDirection(event) {
 }
 
 document.addEventListener('keydown', (event) => {
+  unlockAudioContext();
   if (event.key === ' ' && !isGameOver) {
     event.preventDefault();
     if (isRunning) {
