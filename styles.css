@@ -67,7 +67,8 @@ body {
   width: 100%;
 }
 
-.score {
+.score,
+.high-score {
   background: rgba(148, 163, 184, 0.12);
   padding: 0.75rem 1.5rem;
   border-radius: 9999px;
@@ -76,16 +77,26 @@ body {
   gap: 0.75rem;
 }
 
-.score .label {
+.score .label,
+.high-score .label {
   text-transform: uppercase;
   letter-spacing: 0.08em;
   font-size: 0.8rem;
   color: var(--muted);
 }
 
-.score #scoreValue {
+.score #scoreValue,
+.high-score .value {
   font-weight: 700;
   font-size: 1.5rem;
+}
+
+.high-score .name {
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 
 .controls {
