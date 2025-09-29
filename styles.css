@@ -25,7 +25,7 @@ body {
 }
 
 .game-wrapper {
-  width: min(640px, 100%);
+  width: min(780px, 100%);
   display: grid;
   gap: 1.5rem;
 }
@@ -49,6 +49,10 @@ body {
 }
 
 #board {
+  width: min(100%, 600px);
+  height: auto;
+  aspect-ratio: 1 / 1;
+  display: block;
   border-radius: 0.75rem;
   background: linear-gradient(135deg, rgba(15, 23, 42, 0.9), rgba(15, 23, 42, 0.6));
   box-shadow: 0 20px 40px rgba(15, 23, 42, 0.35);
@@ -135,7 +139,6 @@ button:not(:disabled):hover {
 
 @media (max-width: 540px) {
   #board {
-    width: 320px;
-    height: 320px;
+    width: min(90vw, 420px);
   }
 }
