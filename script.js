@@ -24,6 +24,13 @@ let hasStarted = false;
 let highScore = loadHighScore();
 
 let audioContext = null;
+let backgroundMusicState = {
+  isPlaying: false,
+  masterGain: null,
+  oscillators: [],
+  intervalId: null,
+  context: null,
+};
 
 function getAudioContext() {
   if (audioContext) return audioContext;
@@ -64,6 +71,135 @@ function playMunchSound() {
   oscillator.stop(now + 0.3);
 }
 
+function startBackgroundMusic() {
+  const context = getAudioContext();
+  if (!context) return;
+
+  if (backgroundMusicState.isPlaying) {
+    const now = context.currentTime;
+    const { masterGain } = backgroundMusicState;
+    if (masterGain) {
+      masterGain.gain.cancelScheduledValues(now);
+      masterGain.gain.setTargetAtTime(0.12, now, 0.8);
+    }
+    return;
+  }
+
+  const masterGain = context.createGain();
+  masterGain.gain.setValueAtTime(0.0001, context.currentTime);
+
+  const filter = context.createBiquadFilter();
+  filter.type = 'lowpass';
+  filter.frequency.setValueAtTime(900, context.currentTime);
+  filter.Q.setValueAtTime(0.8, context.currentTime);
+
+  const padOsc = context.createOscillator();
+  padOsc.type = 'sine';
+
+  const harmonyOsc = context.createOscillator();
+  harmonyOsc.type = 'triangle';
+
+  const lfo = context.createOscillator();
+  lfo.type = 'sine';
+  lfo.frequency.setValueAtTime(0.18, context.currentTime);
+
+  const lfoGainPad = context.createGain();
+  lfoGainPad.gain.setValueAtTime(6, context.currentTime);
+  lfo.connect(lfoGainPad);
+  lfoGainPad.connect(padOsc.frequency);
+
+  const lfoGainHarmony = context.createGain();
+  lfoGainHarmony.gain.setValueAtTime(4, context.currentTime);
+  lfo.connect(lfoGainHarmony);
+  lfoGainHarmony.connect(harmonyOsc.frequency);
+
+  padOsc.connect(filter);
+  harmonyOsc.connect(filter);
+  filter.connect(masterGain);
+  masterGain.connect(context.destination);
+
+  const chords = [
+    [220, 329.63],
+    [196, 311.13],
+    [246.94, 369.99],
+    [174.61, 293.66],
+  ];
+
+  let chordIndex = Math.floor(Math.random() * chords.length);
+
+  const applyChord = (index) => {
+    const [rootFreq, harmonyFreq] = chords[index];
+    const now = context.currentTime;
+    padOsc.frequency.cancelScheduledValues(now);
+    harmonyOsc.frequency.cancelScheduledValues(now);
+    padOsc.frequency.setTargetAtTime(rootFreq, now, 1.2);
+    harmonyOsc.frequency.setTargetAtTime(harmonyFreq, now, 1.2);
+  };
+
+  applyChord(chordIndex);
+
+  const intervalId = window.setInterval(() => {
+    chordIndex = (chordIndex + 1) % chords.length;
+    applyChord(chordIndex);
+  }, 8000);
+
+  padOsc.start();
+  harmonyOsc.start();
+  lfo.start();
+
+  masterGain.gain.exponentialRampToValueAtTime(0.12, context.currentTime + 2.2);
+
+  backgroundMusicState = {
+    isPlaying: true,
+    masterGain,
+    oscillators: [padOsc, harmonyOsc, lfo],
+    intervalId,
+    context,
+  };
+}
+
+function stopBackgroundMusic({ immediate = false } = {}) {
+  if (!backgroundMusicState.isPlaying) return;
+
+  const { masterGain, oscillators, intervalId, context } = backgroundMusicState;
+  if (intervalId) {
+    window.clearInterval(intervalId);
+  }
+
+  const now = context.currentTime;
+  masterGain.gain.cancelScheduledValues(now);
+
+  if (immediate) {
+    masterGain.gain.setValueAtTime(0.0001, now);
+  } else {
+    masterGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.8);
+  }
+
+  oscillators.forEach((oscillator) => {
+    try {
+      oscillator.stop(now + (immediate ? 0.01 : 1));
+    } catch (error) {
+      // Ignore attempts to stop oscillators more than once
+    }
+  });
+
+  window.setTimeout(() => {
+    try {
+      masterGain.disconnect();
+    } catch (error) {
+      // Ignore disconnect errors
+    }
+  }, immediate ? 0 : 1000);
+
+  backgroundMusicState = {
+    isPlaying: false,
+    masterGain: null,
+    oscillators: [],
+    intervalId: null,
+    context,
+  };
+}
+
 const keyMap = {
   ArrowUp: { x: 0, y: -1 },
   ArrowDown: { x: 0, y: 1 },
@@ -82,6 +218,7 @@ function init() {
 }
 
 function resetGame() {
+  stopBackgroundMusic({ immediate: true });
   snake = [
     { x: 8, y: 10 },
     { x: 7, y: 10 },
@@ -107,6 +244,7 @@ function startGame() {
   isRunning = true;
   hasStarted = true;
   intervalId = window.setInterval(step, BASE_SPEED);
+  startBackgroundMusic();
   updateButtons();
 }
 
@@ -114,6 +252,7 @@ function pauseGame() {
   if (!isRunning) return;
   isRunning = false;
   window.clearInterval(intervalId);
+  stopBackgroundMusic();
   updateButtons();
 }
 
@@ -123,12 +262,14 @@ function resumeGame() {
   isRunning = true;
   hasStarted = true;
   intervalId = window.setInterval(step, BASE_SPEED);
+  startBackgroundMusic();
   updateButtons();
 }
 
 function stopGame() {
   isRunning = false;
   window.clearInterval(intervalId);
+  stopBackgroundMusic();
   updateButtons();
 }
 
