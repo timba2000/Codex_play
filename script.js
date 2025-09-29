@@ -9,6 +9,8 @@ const startBtn = document.getElementById('startBtn');
 const pauseBtn = document.getElementById('pauseBtn');
 const resetBtn = document.getElementById('resetBtn');
 const scoreValue = document.getElementById('scoreValue');
+const highScoreValue = document.getElementById('highScoreValue');
+const highScoreName = document.getElementById('highScoreName');
 
 let snake = [];
 let direction = { x: 1, y: 0 };
@@ -19,6 +21,7 @@ let intervalId = null;
 let isRunning = false;
 let isGameOver = false;
 let hasStarted = false;
+let highScore = loadHighScore();
 
 const keyMap = {
   ArrowUp: { x: 0, y: -1 },
@@ -34,6 +37,7 @@ const keyMap = {
 function init() {
   resetGame();
   drawBoard();
+  updateHighScoreDisplay();
 }
 
 function resetGame() {
@@ -149,6 +153,16 @@ function isCollision(head) {
 function handleGameOver() {
   stopGame();
   isGameOver = true;
+  if (score > highScore.score) {
+    const namePrompt = prompt('New high score! Enter your name:', highScore.name !== '---' ? highScore.name : '') ?? '';
+    const trimmedName = namePrompt.trim() || 'Anonymous';
+    highScore = {
+      score,
+      name: trimmedName,
+    };
+    saveHighScore();
+    updateHighScoreDisplay();
+  }
   updateButtons();
   drawBoard();
 }
@@ -162,6 +176,37 @@ function drawBoard() {
   if (isGameOver) {
     drawGameOver();
   }
+}
+
+function loadHighScore() {
+  try {
+    const stored = localStorage.getItem('snakeHighScore');
+    if (!stored) {
+      return { score: 0, name: '---' };
+    }
+    const parsed = JSON.parse(stored);
+    const storedScore = Number(parsed.score);
+    if (!Number.isFinite(storedScore) || storedScore < 0) {
+      return { score: 0, name: '---' };
+    }
+    const storedName = typeof parsed.name === 'string' && parsed.name.trim() !== '' ? parsed.name.trim() : '---';
+    return { score: storedScore, name: storedName };
+  } catch (error) {
+    return { score: 0, name: '---' };
+  }
+}
+
+function saveHighScore() {
+  try {
+    localStorage.setItem('snakeHighScore', JSON.stringify(highScore));
+  } catch (error) {
+    // Ignore write errors (e.g., storage disabled)
+  }
+}
+
+function updateHighScoreDisplay() {
+  highScoreValue.textContent = highScore.score;
+  highScoreName.textContent = highScore.name || '---';
 }
 
 function drawGrid() {
